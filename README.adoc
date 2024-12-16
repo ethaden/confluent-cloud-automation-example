@@ -1,0 +1,46 @@
+= Demo for setting up a Confluent Cloud environment with a standard cluster
+
+This demonstrates how to set up a Confluent Cloud environment with a standard cluster and several resources including schema registry, topics, service accounts with role bindings, role-bindings for existing users, etc.
+
+DISCLAIMER: This project is for demonstration purposes only. Using the demo unmodified in production is highly discouraged. Use at your own risk.
+
+== Precondition
+
+You need the following to run this demo:
+
+* A Confluent Cloud Organization.
+* A Confluent Cloud API Key with sufficient access permissions to set up a dedicated cluster and an identity provider including identity pools
+* One or more demo users in your Confluent Cloud organization. These are used for demonstrating role-bindings in the Confluent Cloud UI.
+
+== Getting started
+
+First, you need to customize your terraform variables. Copy `terraform.tfvars.template` to `terraform.tfvars` and specify all missing values. Note that your specific config files has been added to .gitignore for security reasons (thus it won't be commited).
+
+Then you need to initialize terraform (only once):
+
+```shell
+terraform init
+```
+
+Create all the resources. You might get an error message stating that you need to provide access credentials via environment variables. Alternatively, you can drop the `api-key.txt` file created for you or a service account in the terraform folder (make sure you never commit this to git). In any case your prinicpial needs OrganizationAdmin permissions.
+
+```shell
+terraform apply
+```
+
+Confirm the question if you really want to setup the resources.
+
+== Using the setup
+
+In the subfolder `generated` you will find some generated config files for the command line producer/consumer.
+
+Additionally, you should be able to log into Confluent Cloud with your demo test accounts and check if they got the access rights you have assigned to them.
+
+
+== Wrapping things up
+
+You can destroy all created resources including the cluster in Confluent Cloud by running the following command:
+
+```shell
+terraform destroy
+```

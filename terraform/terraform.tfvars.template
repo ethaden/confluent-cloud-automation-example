@@ -1,0 +1,20 @@
+resource_prefix = "demo_"
+# Producer, Consumer
+ccloud_cluster_generate_client_config_files = true
+#ccloud_cluster_region = ""
+ccloud_environment_name = "demo_environment"
+ccloud_cluster_name = "demo_cluster"
+ccloud_cluster_ckus = 1
+# Replace the usernames starting with "u-" with real, existing users in your Confluent Cloud organization
+ccloud_cluster_prefix_mappings_read = {
+    "u-replaceme": ["prefix1"],
+    "u-replaceme2": ["prefix1", "prefix2"]
+}
+# Replace the usernames starting with "u-" with real, existing users in your Confluent Cloud organization
+ccloud_cluster_prefix_mappings_write = {
+    "u-replaceme": ["prefix1"],
+    "u-replaceme2": ["prefix2"]
+}
+ccloud_cluster_producer_write_topic_prefixes = ["prefix1", "prefix2"]
+ccloud_cluster_consumer_group_prefixes = ["prefix1", "prefix2"]
+ccloud_cluster_consumer_read_topic_prefixes = ["prefix1", "prefix2"]
