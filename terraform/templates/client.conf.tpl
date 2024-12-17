@@ -11,6 +11,6 @@ sasl.mechanism=PLAIN
 group.id=${consumer_group_prefix}${client_name}
 
 # Schema Registry
-schema.registry.url={schema_registry_url}
+schema.registry.url=${schema_registry_url}
 basic.auth.credentials.source=USER_INFO
-basic.auth.user.info={schema_registry_user}:{schema_registry_password}
+basic.auth.user.info=${schema_registry_user}:${schema_registry_password}
