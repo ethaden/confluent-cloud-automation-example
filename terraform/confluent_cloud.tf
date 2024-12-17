@@ -248,7 +248,7 @@ resource "confluent_role_binding" "example_schema_registry_producer_role_binding
   for_each = toset(var.ccloud_cluster_producer_write_topic_prefixes)
   principal   = "User:${confluent_service_account.example_sa_producer.id}"
   role_name   = "DeveloperWrite"
-  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.key}"
+  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.key}*"
 }
 
 # resource "confluent_kafka_acl" "example_acl_producer" {
@@ -350,7 +350,7 @@ resource "confluent_role_binding" "example_schema_registry_consumer_role_binding
   for_each = toset(var.ccloud_cluster_consumer_read_topic_prefixes)
   principal   = "User:${confluent_service_account.example_sa_consumer.id}"
   role_name   = "DeveloperRead"
-  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.key}"
+  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.key}*"
 }
 
 
@@ -455,6 +455,17 @@ resource "confluent_role_binding" "example_role_binding_user_developer_group_rea
   }
 }
 
+# Assign DeveloperRead to the environment's Schema Registry to all (user, prefix) combinations for our cluster.
+resource "confluent_role_binding" "example_role_binding_user_developer_read_schema_registry" {
+  for_each = local.user_prefix_developerwrite_map
+  principal   = "User:${each.value.userid}"
+  role_name   = "DeveloperRead"
+  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.value.prefix}*"
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
 
 # For DeveloperWrite: A user account can have read access to multiple prefixes. We need to generate all allowed combinations
 # Note: The result will look like this: {"u-1234__prefix1": {"userid": "u-1234", "prefix": "prefix1"}, "u-5678__prefix2": {"userid": "u-5678", "prefix": "prefix2"}}
@@ -475,6 +486,17 @@ resource "confluent_role_binding" "example_role_binding_user_developer_write" {
   principal   = "User:${each.value.userid}"
   role_name   = "DeveloperWrite"
   crn_pattern = "${confluent_kafka_cluster.example_cluster.rbac_crn}/kafka=${confluent_kafka_cluster.example_cluster.id}/topic=${each.value.prefix}*"
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+# Assign DeveloperWrite to the environment's Schema Registry to all (user, prefix) combinations for our cluster. Note: This is not recommended for production environments. Please use CI/CD for managing schemas instead.
+resource "confluent_role_binding" "example_role_binding_user_developer_write_schema_registry" {
+  for_each = local.user_prefix_developerwrite_map
+  principal   = "User:${each.value.userid}"
+  role_name   = "DeveloperWrite"
+  crn_pattern = "${data.confluent_schema_registry_cluster.example_schema_registry.resource_name}/subject=${each.value.prefix}*"
   lifecycle {
     prevent_destroy = false
   }
