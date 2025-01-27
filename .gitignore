@@ -14,3 +14,7 @@ terraform/.terraform.lock.hcl
 terraform/aws-remote-tfstate-s3.tf
 terraform/terraform.tfstate.backup
 terraform/generated
+
+# Pulumi
+*.pyc
+venv/

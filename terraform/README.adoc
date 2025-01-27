@@ -1,0 +1,148 @@
+= Demo for setting up a Confluent Cloud environment with a standard cluster with Terraform
+
+This demonstrates how to set up a Confluent Cloud environment with a standard cluster and several resources including schema registry, topics, service accounts with role bindings, role-bindings for existing users, etc.
+
+DISCLAIMER: This project is for demonstration purposes only. Using the demo unmodified in production is highly discouraged. Use at your own risk.
+
+== Precondition
+
+You need the following to run this demo:
+
+* A Confluent Cloud Organization.
+* A Confluent Cloud API Key with sufficient access permissions to set up a dedicated cluster and an identity provider including identity pools
+** You can use either a Cloud API key for your OrgAdmin user. Or create a service account, create an API key for that and assign OrgAdmin to the service account.
+* One or more demo users in your Confluent Cloud organization. These are used for demonstrating role-bindings in the Confluent Cloud UI.
+
+In the following we explain quickly how to get these resources. Please use the Confluent documentation if in doubt.
+Almost all steps can be done either in the Web UI or with the confluent command-line tool.
+
+=== If you already have an organization with users (either local or from your identity provider)
+
+Either create a new service account with Org Admin or select an existing one. You can refer to the steps in the following section and just skip those which are unnecessary in your existing organization.
+
+If you have configured an Identity Provider and provide access to users based on this, you do not need to create local users. Instead, you can use existing users managed by your identity provider instead. Typically, you would assign roles not directly to users but instead add the users to a security group and user https://docs.confluent.io/cloud/current/security/authenticate/user-identities/user-idps/sso/group-mapping/overview.html[group mappings].
+
+=== If you start from scratch
+
+Create a Confluent Cloud Organization on the web by navigating to https://confluent.cloud and set up a new account (with an email address not used in another Confluent Cloud organization already).
+
+For this demo, we create two local users and assign roles to them via Terraform. For creating users you need to have to valid email addresses (that are not used in any other Confluent Cloud organization already) and invite the new users to your Confluent Cloud organization. This can be done either on the Web UI or via command line. Please refer to the https://docs.confluent.io/cloud/current/security/authenticate/user-identities/user-accounts/manage-local-user-accounts.html[documentation on creating local user accounts with the Web UI].
+
+If you prefer to use the command line, you first need to install the https://docs.confluent.io/confluent-cli/current/overview.html[`confluent` command]. Then you can login to your Confluent Cloud organization:
+
+```shell
+confluent login
+```
+
+A new user can be invited like this:
+
+```shell
+confluent iam user invitation create <email address>
+```
+
+You can list the existing users in the organization:
+
+```shell
+confluent iam user list
+```
+
+The users will receive an invitation via email which the need to accept the invitation. Then they need to follow the instructions for setting a password etc.
+
+Note the IDs of the newly created users as they will be used later-on for customizing the Terraform setup.
+
+For setting up the automation via Terraform, you have two options: Create an API key for your own user (who has `OrganizationAdmin` access permissons by default). Or create a service account, assign `OrganizationAdmin` and then an API key for that service. Again, this can be done via the Web UI or on the command line. Please refer to the https://docs.confluent.io/cloud/current/security/authenticate/workload-identities/overview.html[documentation for managing workload identities].
+
+If you want to create the service account on the command line, you can use this command:
+
+```shell
+confluent iam service-account create terraform-demo-sa --description "Service account for demonstrating terraform"
+```
+
+Assign the `OrganizationAdmin` role to the new service account:
+
+```shell
+confluent iam rbac role-binding create --role OrganizationAdmin --principal User:<service-account-ID>
+```
+
+Then create a service account for the service account.
+
+```shell
+confluent api-key create --resource cloud --service-account <service-account-ID>
+```
+
+Note down the API Key and the corresponding secret as they cannot be retrieved later-on. For demonstration purposes, you can copy the file `api-key.txt.template` to `api-key.txt` and update its content accordingly by replacing the placeholders with the API key and the API secret, respectively.
+Alternatively, you can set the environment variables `CONFLUENT_CLOUD_API_KEY` and `CONFLUENT_CLOUD_API_SECRET`.
+
+== Getting started
+
+DISCLAIMER: The shown approach for using Terraform is just an example for demonstrating some capabilities of Terraform and does not in any way represent a recommendation by Confluent how this should be done in general, particularly not in production systems.
+
+First, you need to customize your terraform variables. Copy `terraform.tfvars.template` to `terraform.tfvars` and specify all missing values. Note that your specific config files has been added to .gitignore for security reasons (thus it won't be commited). You can use the IDs of the users created above your version of the config file (update the `u-replaceme` and `u-replaceme2` placeholders).
+
+Then you need to initialize terraform (only once):
+
+```shell
+terraform init
+```
+
+Create all the resources. You might get an error message stating that you need to provide access credentials via environment variables. Alternatively, you can drop the `api-key.txt` file created for you or a service account in the terraform folder (make sure you never commit this to git). In any case your prinicpial needs OrganizationAdmin permissions.
+
+```shell
+terraform apply
+```
+
+Confirm the question if you really want to setup the resources.
+
+== Using the setup
+
+In the subfolder `generated` you will find some generated config files for the command line producer/consumer.
+
+Additionally, you should be able to log into Confluent Cloud with your demo test accounts and check if they got the access rights you have assigned to them.
+
+
+=== Using Schema Registry
+
+The created service accounts have been provided with access to the environment's Schema Registry. In order to use this feature, we need to define a schema first. For simplicity, we use an environment variable for that:
+
+```shell
+export SCHEMA='{
+    "type":"record",
+    "name":"station",
+    "fields":[
+        {"name":"city","type":"string"},
+        {"name":"country","type":"string"}
+    ]
+}'
+```
+
+Then have a look at the generated client files in the `generated` folder. There are examples included for how to product with that schema to one of the existing topics.
+Please adapt the topic name according to your configuration. In the following, we assume that a topic `prefix1.test` exists and is writable by the producer.
+
+```shell
+kafka-avro-console-producer --producer.config client-producer.conf --bootstrap-server <cluster_bootstrap_server>   --property schema.registry.url=<schema_registry_url> --property value.schema="$SCHEMA" --topic prefix1.test
+```
+
+Here are some useful records to get you started:
+
+```json
+{"city": "Pretoria", "country": "South Africa"}
+{"city": "Cairo", "country": "Egypt"}
+{"city": "Nairobi", "country": "Kenya"}
+{"city": "Addis Ababa", "country": "Ethiopia"}
+```
+
+Note: For demo purposes we provided the producer with write access to Schema Registry. This is not recommended for production environments. Please manage schemas explicitly using CI/CD or similar means instead.
+
+Consume the records like this:
+
+```shell
+kafka-avro-console-consumer --consumer.config client-consumer.conf --bootstrap-server <cluster_bootstrap_server> --property schema.registry.url=<schema_registry_url> --from-beginning --topic prefix1.test
+
+
+== Wrapping things up
+
+You can destroy all created resources including the cluster in Confluent Cloud by running the following command:
+
+```shell
+terraform destroy
+```

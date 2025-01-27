@@ -4,82 +4,8 @@ This demonstrates how to set up a Confluent Cloud environment with a standard cl
 
 DISCLAIMER: This project is for demonstration purposes only. Using the demo unmodified in production is highly discouraged. Use at your own risk.
 
-== Precondition
+== Terraform (vs. Pulumi)
 
-You need the following to run this demo:
+This demo project shows how to managing Confluent Cloud infrastructure with Terraform. Examples for using Pulumi instead of Terraform might be added in the future. Please check if Pulumi is supported officially by Confluent before using it.
 
-* A Confluent Cloud Organization.
-* A Confluent Cloud API Key with sufficient access permissions to set up a dedicated cluster and an identity provider including identity pools
-* One or more demo users in your Confluent Cloud organization. These are used for demonstrating role-bindings in the Confluent Cloud UI.
-
-== Getting started
-
-First, you need to customize your terraform variables. Copy `terraform.tfvars.template` to `terraform.tfvars` and specify all missing values. Note that your specific config files has been added to .gitignore for security reasons (thus it won't be commited).
-
-Then you need to initialize terraform (only once):
-
-```shell
-terraform init
-```
-
-Create all the resources. You might get an error message stating that you need to provide access credentials via environment variables. Alternatively, you can drop the `api-key.txt` file created for you or a service account in the terraform folder (make sure you never commit this to git). In any case your prinicpial needs OrganizationAdmin permissions.
-
-```shell
-terraform apply
-```
-
-Confirm the question if you really want to setup the resources.
-
-== Using the setup
-
-In the subfolder `generated` you will find some generated config files for the command line producer/consumer.
-
-Additionally, you should be able to log into Confluent Cloud with your demo test accounts and check if they got the access rights you have assigned to them.
-
-
-=== Using Schema Registry
-
-The created service accounts have been provided with access to the environment's Schema Registry. In order to use this feature, we need to define a schema first. For simplicity, we use an environment variable for that:
-
-```shell
-export SCHEMA='{
-    "type":"record",
-    "name":"station",
-    "fields":[
-        {"name":"city","type":"string"},
-        {"name":"country","type":"string"}
-    ]
-}'
-```
-
-Then have a look at the generated client files in the `generated` folder. There are examples included for how to product with that schema to one of the existing topics.
-Please adapt the topic name according to your configuration. In the following, we assume that a topic `prefix1.test` exists and is writable by the producer.
-
-```shell
-kafka-avro-console-producer --producer.config client-producer.conf --bootstrap-server <cluster_bootstrap_server>   --property schema.registry.url=<schema_registry_url> --property value.schema="$SCHEMA" --topic prefix1.test
-```
-
-Here are some useful records to get you started:
-
-```json
-{"city": "Pretoria", "country": "South Africa"}
-{"city": "Cairo", "country": "Egypt"}
-{"city": "Nairobi", "country": "Kenya"}
-{"city": "Addis Ababa", "country": "Ethiopia"}
-```
-
-Note: For demo purposes we provided the producer with write access to Schema Registry. This is not recommended for production environments. Please manage schemas explicitly using CI/CD or similar means instead.
-
-Consume the records like this:
-
-```shell
-kafka-avro-console-consumer --consumer.config client-consumer.conf --bootstrap-server <cluster_bootstrap_server> --property schema.registry.url=<schema_registry_url> --from-beginning --topic prefix1.test
-
-
-== Wrapping things up
-
-You can destroy all created resources including the cluster in Confluent Cloud by running the following command:
-
-```shell
-terraform destroy
-```
+Please continue in the `terraform` subfolder.
